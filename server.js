@@ -7,15 +7,19 @@ const multer = require('multer');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const convertapi = require('convertapi')(
-    process.env.CONVERTAPI_SECRET
-);
+const conversions = require("./conversions");
+const ConvertApi = require("convertapi");
+const convertapi = new ConvertApi(process.env.ConvertAPI_SECRET);
+
 
 // ===================================
 // إعداد التطبيق
 // ===================================
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.use(cors());
+app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
 // ConvertAPI Configuration
 
@@ -23,9 +27,7 @@ const PORT = process.env.PORT || 3000;
 // ===================================
 // إعداد Middleware
 // ===================================
-app.use(cors());
-app.use(express.json());
-app.use(express.static('.')); // لخدمة الملفات الثابتة (HTML, CSS, JS)
+// لخدمة الملفات الثابتة (HTML, CSS, JS)
 
 // ===================================
 // إعداد Multer لرفع الملفات
@@ -48,7 +50,21 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 100 * 1024 * 1024 }
 });
+app.post("/upload", upload.single("file"), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No file uploaded" });
+        }
 
+        res.json({
+            success: true,
+            filename: req.file.filename,
+            path: `/uploads/${req.file.filename}`
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // ===================================
 // نقطة النهاية الرئيسية
 // ===================================
