@@ -24,6 +24,9 @@ async function testConversion(inputFormat, outputFormat) {
             console.log(`✅ ${inputFormat} -> ${outputFormat} seems supported (or at least tried to convert).`);
         } catch (e) {
             console.log(`❌ ${inputFormat} -> ${outputFormat} failed: ${e.message}`);
+            if (e.data) {
+                console.log("   Standard Error Data:", JSON.stringify(e.data));
+            }
         } finally {
             if (fs.existsSync(dummyFile)) fs.unlinkSync(dummyFile);
         }
@@ -34,17 +37,16 @@ async function testConversion(inputFormat, outputFormat) {
 }
 
 async function runTests() {
-    // Document
+    // Document (Should work)
     await testConversion('txt', 'pdf');
 
-    // Archive (often not supported by general convert)
-    await testConversion('zip', 'rar');
+    // Video (The problem area)
+    // Try MP4 -> MP3 (Audio Extraction - likely supported)
+    await testConversion('mp4', 'mp3');
 
     // Audio
-    await testConversion('mp3', 'wav');
-
-    // Video
-    await testConversion('mp4', 'avi');
+    // Try failing case again just to be sure, or maybe wav -> mp3
+    await testConversion('wav', 'mp3');
 }
 
 runTests();
