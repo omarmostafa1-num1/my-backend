@@ -1,32 +1,25 @@
-// backend/conversions.js
-// جميع التحويلات المدعومة في الموقع
-
 module.exports = {
     // ================== IMAGES ==================
     image: {
-        jpg: ["jpeg", "png", "webp", "bmp"],
-        jpeg: ["jpg", "png", "webp", "bmp"],
-        png: ["jpg", "jpeg", "webp", "bmp"],
-        webp: ["jpg", "jpeg", "png"],
-        bmp: ["jpg", "jpeg", "png", "webp"]
+        jpg: ["png", "webp"],
+        jpeg: ["png", "webp"],
+        png: ["jpg", "webp"],
+        webp: ["jpg", "png"],
+        bmp: ["jpg", "png"]
     },
 
     // ================= DOCUMENTS =================
     document: {
-        pdf: ["docx", "txt"],
+        pdf: ["docx", "txt", "jpg", "png"],
         docx: ["pdf", "txt"],
-        txt: ["pdf", "docx"]
+        txt: ["pdf"],
+        ppt: ["pdf"],
+        pptx: ["pdf"],
+        xls: ["pdf"],
+        xlsx: ["pdf"]
     },
 
-    // ================== ARCHIVES =================
-    // ⚠️ TAR غير مدعوم بالـ API لذلك غير مضاف
-    archive: {
-        zip: ["rar", "7z"],
-        rar: ["zip", "7z"],
-        "7z": ["zip", "rar"]
-    },
-
-    // =================== AUDIO ===================
+    // ================== AUDIO ==================
     audio: {
         mp3: ["wav", "aac", "ogg"],
         wav: ["mp3", "aac", "ogg"],
@@ -35,10 +28,12 @@ module.exports = {
     },
 
     // =================== VIDEO ===================
+    // Note: Video conversion in ConvertAPI is limited and may require specific plans.
+    // We strictly list formats that are commonly attempted.
+    // If a specific pair fails, the server error handler will now inform the user.
     video: {
-        mp4: ["avi", "mkv", "webm"],
-        avi: ["mp4", "mkv"],
-        mkv: ["mp4", "avi"],
-        webm: ["mp4"]
+        mp4: ["mp3", "webm"], // MP4 to Audio (MP3) or Web-friendly video (WEBM)
+        webm: ["mp4", "mp3"],
+        mkv: ["mp4", "mp3"]
     }
 };

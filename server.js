@@ -81,61 +81,99 @@ app.post('/api/convert', upload.single('file'), async (req, res) => {
 
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
+            return res.status(400).json({ error: 'No file uploaded.' });
         }
 
         const outputFormat = req.body.outputFormat;
         if (!outputFormat) {
-            return res.status(400).json({ error: 'صيغة الإخراج مطلوبة' });
+            return res.status(400).json({ error: 'Output format is required.' });
         }
 
         uploadedFilePath = req.file.path;
-        console.log(`بدء التحويل: ${req.file.originalname} → ${outputFormat}`);
+        console.log(`Starting conversion: ${req.file.originalname} (${req.file.size} bytes) -> ${outputFormat}`);
 
-        // إعداد خيارات التحويل
+        // Get extension without dot
+        const inputFormat = path.extname(req.file.originalname).substring(1).toLowerCase();
+
+        // Validation: Ensure inputFormat is not empty
+        if (!inputFormat) {
+            throw new Error("Could not determine input file format.");
+        }
+
+        // ConvertAPI Configuration
         const conversionOptions = {
-            File: uploadedFilePath
+            File: uploadedFilePath,
+            StoreFile: true // Ensure file is stored for download
         };
 
-        // إضافة خيارات خاصة حسب نوع الملف
+        // Specific category options
         const category = req.body.category;
         if (category === 'image') {
             conversionOptions.ImageQuality = '90';
         }
 
-        // تنفيذ التحويل باستخدام ConvertAPI SDK
-        // ملاحظة: نقوم بتحويل من الصيغة الأصلية إلى الصيغة المطلوبة
-        const inputFormat = path.extname(req.file.originalname).substring(1).toLowerCase();
+        console.log(`Connecting to ConvertAPI... (${inputFormat} -> ${outputFormat})`);
 
-        console.log(`جارٍ الاتصال بـ ConvertAPI... (${inputFormat} -> ${outputFormat})`);
+        // Execute Conversion
         const result = await convertapi.convert(outputFormat, conversionOptions, inputFormat);
 
-        console.log('تم التحويل بنجاح، جاري التنزيل...');
+        console.log('Conversion successful. Downloading result...');
 
-        // حفظ الملف المحول
+        // Save result
+        // We use req.file.filename as base to avoid collisions
         const savedFiles = await result.saveFiles(path.join(__dirname, 'uploads'));
+
+        if (!savedFiles || savedFiles.length === 0) {
+            throw new Error("Conversion finished but no file was returned.");
+        }
+
         resultFile = savedFiles[0];
+        console.log(`File saved at: ${resultFile}`);
 
-        console.log(`تم حفظ الملف: ${resultFile}`);
+        // Send file
+        res.download(resultFile, `converted-${Date.now()}.${outputFormat}`, (err) => {
+            if (err) console.error("Error sending file:", err);
 
-        // إرسال الملف للمستخدم
-        res.download(resultFile, `converted.${outputFormat}`, (err) => {
-            // تنظيف الملفات
-            if (uploadedFilePath && fs.existsSync(uploadedFilePath)) fs.unlinkSync(uploadedFilePath);
-            if (resultFile && fs.existsSync(resultFile)) fs.unlinkSync(resultFile);
+            // Clean up
+            try {
+                if (uploadedFilePath && fs.existsSync(uploadedFilePath)) fs.unlinkSync(uploadedFilePath);
+                if (resultFile && fs.existsSync(resultFile)) fs.unlinkSync(resultFile);
+            } catch (cleanupErr) {
+                console.error("Cleanup error:", cleanupErr);
+            }
         });
 
     } catch (error) {
-        console.error('خطأ في التحويل:', error);
+        console.error('Conversion Error:', error);
 
-        // تنظيف الملفات
-        if (uploadedFilePath && fs.existsSync(uploadedFilePath)) fs.unlinkSync(uploadedFilePath);
-        if (resultFile && fs.existsSync(resultFile)) fs.unlinkSync(resultFile);
+        // Cleanup uploaded file on error
+        if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+            try { fs.unlinkSync(uploadedFilePath); } catch (e) { }
+        }
 
-        let errorMessage = 'حدث خطأ أثناء التحويل';
-        if (error.message) errorMessage = error.message;
+        // Handle specific ConvertAPI errors
+        let statusCode = 500;
+        let errorMessage = 'An error occurred during conversion.';
 
-        res.status(500).json({ error: errorMessage });
+        if (error.code === 4000) {
+            statusCode = 400;
+            errorMessage = 'Parameter validation error. The file might be corrupted, empty, or the format is not supported for this conversion.';
+            // Often happens if file size is 0 or format is wrong
+            console.error("ConvertAPI 4000 Details:", error.data);
+        } else if (error.code === 4010) {
+            statusCode = 400;
+            errorMessage = 'Invalid source file. The file format matches the extension but the content might be corrupted.';
+        } else if (error.code === 401 || error.code === 403) {
+            statusCode = 500; // Internal validation issue
+            errorMessage = 'Authentication invalid with conversion service.';
+        } else if (error.statusCode === 415) { // Unsupported Media Type
+            statusCode = 400;
+            errorMessage = 'This specific conversion (Input -> Output) is not supported by the converter.';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+
+        res.status(statusCode).json({ error: errorMessage, details: error.data || null });
     }
 });
 
