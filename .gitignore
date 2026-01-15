@@ -1,0 +1,21 @@
+# المجلدات
+node_modules/
+uploads/
+downloads/
+
+# الملفات البيئية
+.env
+
+# ملفات النظام
+.DS_Store
+Thumbs.db
+
+# ملفات المحرر
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ملفات السجلات
+*.log
+npm-debug.log*
