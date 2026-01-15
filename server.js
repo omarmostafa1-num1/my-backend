@@ -1,13 +1,15 @@
 // ===================================
 // استيراد المكتبات المطلوبة
 // ===================================
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
-const ConvertAPI = require('convertapi');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+const convertapi = require('convertapi')(
+    process.env.CONVERTAPI_SECRET
+);
 
 // ===================================
 // إعداد التطبيق
@@ -16,7 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ConvertAPI Configuration
-const convertapi = new ConvertAPI(process.env.CONVERTAPI_SECRET);
+
 
 // ===================================
 // إعداد Middleware
